@@ -6,11 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-#pathfinder-merkle-tree = { git = "https://github.com/petscheit/pathfinder", rev = "cf6958517d5db3e98ce1df69cacad4f35765b942" }
-pathfinder-merkle-tree = { path = "../../f_pathfinder/crates/merkle-tree" }
-pathfinder-common = { path = "../../f_pathfinder/crates/common" }
-pathfinder-storage = { path = "../../f_pathfinder/crates/storage" }
-pathfinder-crypto = { path = "../../f_pathfinder/crates/crypto" }
+pathfinder-merkle-tree = { git = "https://github.com/petscheit/pathfinder"}
+pathfinder-common = { git = "https://github.com/petscheit/pathfinder"}
+pathfinder-storage = { git = "https://github.com/petscheit/pathfinder"}
+pathfinder-crypto = { git = "https://github.com/petscheit/pathfinder"}
 
 zstd-sys = "=2.0.9" # required to fix build error
 bitvec = "1.0.1"
