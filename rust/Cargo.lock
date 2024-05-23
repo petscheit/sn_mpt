@@ -1124,6 +1124,7 @@ checksum = "c165a9ab64cf766f73521c0dd2cfdff64f488b8f0b3e621face3462d3db536d7"
 dependencies = [
  "num-integer",
  "num-traits",
+ "serde",
 ]
 
 [[package]]
@@ -1889,11 +1890,16 @@ dependencies = [
  "anyhow",
  "bitvec",
  "hex",
+ "num-bigint",
+ "num-traits",
  "pathfinder-common",
  "pathfinder-crypto",
  "pathfinder-merkle-tree",
  "pathfinder-storage",
  "rand",
+ "serde",
+ "serde_derive",
+ "serde_json",
  "zstd-sys",
 ]
 
