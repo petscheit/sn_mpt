@@ -272,11 +272,11 @@ fn main() {
     let mut cache = MemorizerCache::new();
 
     println!("Seeding Merkle...");
-    cache.seed(50000);
+    cache.seed(5000);
 
     println!("Creating random update batch...");
     // let batch = &cache.create_random_batch_leaf_add(10).unwrap();
-    let batch = &cache.create_random_batch_leaf_add(10).unwrap();
+    let batch = &cache.create_random_batch_leaf_add(3).unwrap();
 
     let batch_0: BatchUpdateCairo0 = batch.into();
 

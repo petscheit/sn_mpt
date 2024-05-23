@@ -7,3 +7,4 @@ edition = "2023_11"
 
 [dependencies]
 alexandria_merkle_tree = { path = "../../alexandria" }
+# alexandria_merkle_tree = { git = "https://github.com/petscheit/alexandria" }
