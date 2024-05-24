@@ -1,13 +1,12 @@
 use pathfinder_common::hash::{FeltHash, PoseidonHash};
+mod batch_proof;
 mod batcher;
 mod items;
-mod tree;
 mod persistance;
-mod batch_proof;
+mod tree;
 
-use crate::batcher::{Batcher};
+use crate::batcher::Batcher;
 use crate::items::CachedItem;
-use crate::tree::CacheTree;
 
 struct HdpCache<H: FeltHash, const HEIGHT: usize> {
     batcher: Batcher<H, HEIGHT>,
@@ -43,21 +42,19 @@ impl<H: FeltHash, const HEIGHT: usize> Cache for HdpCache<H, HEIGHT> {
     }
 }
 
-
 fn main() {
     let mut cache = HdpCache::<PoseidonHash, 251>::new();
 
-    let items = vec![CachedItem::new(vec![1, 2, 3]), CachedItem::new(vec![4, 5, 6])];
+    let items = vec![
+        CachedItem::new(vec![1, 2, 3]),
+        CachedItem::new(vec![4, 5, 6]),
+    ];
     let res = cache.submit(items);
-    println!("Batch ID: {:?}", res.unwrap());
-    let items = vec![CachedItem::new(vec![7, 8, 9]), CachedItem::new(vec![10, 11, 12])];
-    let res = cache.submit(items);
+    let items = vec![
+        CachedItem::new(vec![7, 8, 9]),
+        CachedItem::new(vec![10, 11, 12]),
+    ];
+    let _ = cache.submit(items);
 
     cache.finalize(1).unwrap()
-
-    // println!("Batch ID: {:?}", res.unwrap());
-
 }
-
-
-

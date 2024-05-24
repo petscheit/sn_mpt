@@ -1,9 +1,9 @@
-use std::collections::HashMap;
 use anyhow::Context;
 use bitvec::prelude::{BitSlice, Msb0};
 use pathfinder_crypto::Felt;
 use pathfinder_merkle_tree::storage::Storage;
 use pathfinder_storage::StoredNode;
+use std::collections::HashMap;
 
 #[derive(Default, Debug)]
 pub struct Persistance {

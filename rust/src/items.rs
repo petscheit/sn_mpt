@@ -1,6 +1,10 @@
+use pathfinder_crypto::hash::{poseidon_hash, poseidon_hash_many};
 use pathfinder_crypto::{Felt, MontFelt};
-use pathfinder_crypto::hash::{poseidon_hash_many, poseidon_hash};
-use rand::{Rng, thread_rng};
+
+#[cfg(test)]
+use rand::prelude::StdRng;
+#[cfg(test)]
+use rand::{Rng, SeedableRng};
 
 #[derive(Debug, Clone)]
 pub struct CachedItem {
@@ -21,14 +25,13 @@ impl CachedItem {
     }
 
     fn commitment(value: &Vec<u8>) -> Felt {
-        poseidon_hash_many(&*vec_to_mont_felts(&value)).into()
+        poseidon_hash_many(&vec_to_mont_felts(value)).into()
     }
 
     fn gen_key(commitment: &Felt) -> Felt {
-        poseidon_hash(commitment.clone().into(), commitment.clone().into()).into()
+        poseidon_hash((*commitment).into(), (*commitment).into()).into()
     }
 }
-
 
 fn vec_to_mont_felts(data: &Vec<u8>) -> Vec<MontFelt> {
     const CHUNK_SIZE: usize = 32;
@@ -45,7 +48,9 @@ fn vec_to_mont_felts(data: &Vec<u8>) -> Vec<MontFelt> {
 #[cfg(test)]
 impl Default for CachedItem {
     fn default() -> Self {
-        let mut rng = thread_rng();
+        let seed = [0u8; 32];
+        let mut rng = StdRng::from_seed(seed);
+
         CachedItem::new((0..10).map(|_| rng.gen()).collect())
     }
 }

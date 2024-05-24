@@ -1,10 +1,10 @@
-use serde::Serialize;
-use serde_json::to_string_pretty;
-use std::collections::HashMap;
+use crate::items::CachedItem;
 use pathfinder_common::hash::FeltHash;
 use pathfinder_common::trie::TrieNode;
 use pathfinder_crypto::Felt;
-use crate::items::CachedItem;
+use serde::Serialize;
+
+use std::collections::HashMap;
 
 #[derive(Serialize, Debug)]
 pub struct LeafUpdate {
@@ -15,11 +15,11 @@ pub struct LeafUpdate {
 
 impl From<&CachedItem> for LeafUpdate {
     fn from(item: &CachedItem) -> Self {
-       LeafUpdate {
-           key: hex::encode(item.key.to_be_bytes()),
-           pre_value: hex::encode(Felt::ZERO.to_be_bytes()),
-           post_value: hex::encode(item.commitment.to_be_bytes()),
-       }
+        LeafUpdate {
+            key: hex::encode(item.key.to_be_bytes()),
+            pre_value: hex::encode(Felt::ZERO.to_be_bytes()),
+            post_value: hex::encode(item.commitment.to_be_bytes()),
+        }
     }
 }
 
@@ -32,7 +32,12 @@ pub struct BatchProof {
 }
 
 impl BatchProof {
-    pub fn new<H: FeltHash>(pre_root: Felt, post_root: Felt, leaf_updates: Vec<LeafUpdate>, proofs: Vec<Vec<TrieNode>>) -> Self {
+    pub fn new<H: FeltHash>(
+        pre_root: Felt,
+        post_root: Felt,
+        leaf_updates: Vec<LeafUpdate>,
+        proofs: Vec<Vec<TrieNode>>,
+    ) -> Self {
         let mut batch_proof = BatchProof {
             pre_root: hex::encode(pre_root.to_be_bytes()),
             post_root: hex::encode(post_root.to_be_bytes()),
@@ -44,34 +49,29 @@ impl BatchProof {
     }
 
     fn generate_preimage_and_updates<H: FeltHash>(&mut self, proofs: Vec<Vec<TrieNode>>) {
-        proofs
-            .iter()
-            .flat_map(|r| r.iter())
-            .for_each(|node| {
-                let hash = node.hash::<H>();
-                match node {
-                    TrieNode::Binary { left, right } => {
-                        &self.preimage.insert(
-                            hex::encode(hash.to_be_bytes()),
-                            vec![
-                                hex::encode(left.to_be_bytes()),
-                                hex::encode(right.to_be_bytes()),
-                            ]
-                        );
-                    },
-                    TrieNode::Edge { child, path } => {
-                        &self.preimage.insert(
-                            hex::encode(hash.to_be_bytes()),
-                            vec![
-                                hex::encode(path.len().to_be_bytes()),
-                                hex::encode(Felt::from_bits(&path).unwrap().to_be_bytes()),
-                                hex::encode(child.to_be_bytes())
-                            ]
-                        );
-                    },
+        proofs.iter().flat_map(|r| r.iter()).for_each(|node| {
+            let hash = node.hash::<H>();
+            match node {
+                TrieNode::Binary { left, right } => {
+                    let _ = &self.preimage.insert(
+                        hex::encode(hash.to_be_bytes()),
+                        vec![
+                            hex::encode(left.to_be_bytes()),
+                            hex::encode(right.to_be_bytes()),
+                        ],
+                    );
                 }
-
-            });
+                TrieNode::Edge { child, path } => {
+                    let _ = &self.preimage.insert(
+                        hex::encode(hash.to_be_bytes()),
+                        vec![
+                            hex::encode(path.len().to_be_bytes()),
+                            hex::encode(Felt::from_bits(path).unwrap().to_be_bytes()),
+                            hex::encode(child.to_be_bytes()),
+                        ],
+                    );
+                }
+            }
+        });
     }
 }
-
