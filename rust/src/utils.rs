@@ -76,7 +76,7 @@ impl From<&BatchUpdate> for BatchUpdateCairo0 {
 }
 
 
-fn generate_preimage_and_updates(updates: &Vec<LeafUpdate>) -> (HashMap<String, Vec<String>>, Vec<LeafUpdateCairo0>) {
+fn generate_preimage_and_updates(updates: &Vec<LeafUpdate>) -> (HashMap<String, Vec<String>>) {
     fn convert(values: &[TrieNode], map: &mut HashMap<String, Vec<String>>) {
         values.iter().for_each(|node| {
             let hash = node.hash::<PoseidonHash>();
@@ -105,10 +105,8 @@ fn generate_preimage_and_updates(updates: &Vec<LeafUpdate>) -> (HashMap<String, 
     }
 
     let mut map: HashMap<String, Vec<String>> = HashMap::new();
-    let mut leaf_updates = vec![];
 
     updates.iter().for_each(|update| {
-        leaf_updates.push(update.into());
         convert(&update.proof_pre, &mut map);
         convert(&update.proof_post, &mut map);
     });
