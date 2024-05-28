@@ -58,12 +58,15 @@ impl<H: FeltHash, const HEIGHT: usize> CacheTree<H, HEIGHT> {
 
         // Write new leafs to trie and generate pre-insert proofs
         items.iter().try_for_each(|item| {
+            println!("GetProofPre - Key: {:?}, Root Index: {:?}", item.key, root_index_pre);
             let proof = MerkleTree::<H, HEIGHT>::get_proof(
                 root_index_pre,
                 &self.storage,
                 &item.key.view_bits().to_bitvec(),
             )?
             .ok_or(anyhow!("Pre-insert proof not found"))?;
+
+
 
             self.trie.set(
                 &self.storage,
@@ -83,6 +86,7 @@ impl<H: FeltHash, const HEIGHT: usize> CacheTree<H, HEIGHT> {
 
         // Generate post-insert proofs
         items.iter().try_for_each(|item| {
+            println!("GetProofPost - Key: {:?}, Root Index: {:?}", item.key, next_index);
             let proof = MerkleTree::<H, HEIGHT>::get_proof(
                 next_index,
                 &self.storage,
@@ -151,7 +155,7 @@ impl<H: FeltHash, const HEIGHT: usize> CacheTree<H, HEIGHT> {
             };
 
             let index = self.storage.next_index + (rel_index as u64);
-
+            println!("Persisting node at    : {:?}", index);
             let _ = self.storage.nodes.insert(index, (*hash, node));
         }
 
