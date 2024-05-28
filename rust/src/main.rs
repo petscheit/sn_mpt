@@ -50,11 +50,11 @@ fn main() {
         CachedItem::new(vec![4, 5, 6]),
     ];
     let res = cache.submit(items);
-    let items = vec![
-        CachedItem::new(vec![7, 8, 9]),
-        CachedItem::new(vec![10, 11, 12]),
-    ];
-    let _ = cache.submit(items);
-
-    cache.finalize(1).unwrap()
+    // let items = vec![
+    //     CachedItem::new(vec![7, 8, 9]),
+    //     CachedItem::new(vec![10, 11, 12]),
+    // ];
+    // let _ = cache.submit(items);
+    //
+    // cache.finalize(1).unwrap()
 }

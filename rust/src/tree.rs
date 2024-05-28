@@ -39,6 +39,9 @@ impl<H: FeltHash, const HEIGHT: usize> CacheTree<H, HEIGHT> {
         cache.latest_root = update.root_commitment;
         cache.root_to_index.insert(cache.latest_root, 0);
 
+        println!("Latest Root: {:?}", cache.latest_root);
+        println!("Latest Index: {:?}", 0);
+
         cache
     }
 
@@ -156,6 +159,7 @@ impl<H: FeltHash, const HEIGHT: usize> CacheTree<H, HEIGHT> {
         let number_of_nodes_added = update.nodes_added.len() as u64;
         let storage_root_index = self.storage.next_index + number_of_nodes_added - 1;
         self.storage.next_index += number_of_nodes_added;
+        println!("Next index: {:?}", self.storage.next_index);
 
         Ok(storage_root_index)
     }
