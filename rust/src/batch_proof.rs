@@ -5,6 +5,7 @@ use pathfinder_crypto::Felt;
 use serde::Serialize;
 
 use std::collections::HashMap;
+use serde_json::to_string_pretty;
 
 #[derive(Serialize, Debug)]
 pub struct LeafUpdate {
@@ -25,6 +26,7 @@ impl From<&CachedItem> for LeafUpdate {
 
 #[derive(Serialize, Debug)]
 pub struct BatchProof {
+    pub id: u64,
     pub pre_root: String,
     pub post_root: String,
     pub preimage: HashMap<String, Vec<String>>,
@@ -37,8 +39,10 @@ impl BatchProof {
         post_root: Felt,
         leaf_updates: Vec<LeafUpdate>,
         proofs: Vec<Vec<TrieNode>>,
+        batch_id: &u64,
     ) -> Self {
         let mut batch_proof = BatchProof {
+            id: batch_id.clone(),
             pre_root: hex::encode(pre_root.to_be_bytes()),
             post_root: hex::encode(post_root.to_be_bytes()),
             preimage: HashMap::new(),
@@ -73,5 +77,9 @@ impl BatchProof {
                 }
             }
         });
+    }
+
+    pub fn to_json(&self) -> String {
+        to_string_pretty(&self).unwrap()
     }
 }

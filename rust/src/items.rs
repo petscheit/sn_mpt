@@ -5,6 +5,7 @@ use pathfinder_crypto::{Felt, MontFelt};
 use rand::prelude::StdRng;
 #[cfg(test)]
 use rand::{Rng, SeedableRng};
+use rusqlite::{params, ToSql};
 
 #[derive(Debug, Clone)]
 pub struct CachedItem {
