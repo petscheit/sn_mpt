@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use anyhow::Context;
 use bitvec::order::Msb0;
 use bitvec::slice::BitSlice;
@@ -7,8 +6,8 @@ use pathfinder_merkle_tree::storage::Storage;
 use pathfinder_storage::StoredNode;
 use r2d2::PooledConnection;
 use r2d2_sqlite::SqliteConnectionManager;
-use rusqlite::{Connection, OptionalExtension, params};
-use crate::db::ConnectionManager;
+use rusqlite::{params, OptionalExtension};
+
 use crate::trie_cache::item::CachedItem;
 
 #[derive(Debug, Clone, Copy)]
@@ -22,7 +21,8 @@ impl<'a> TrieDB<'a> {
     }
 
     pub fn persist_leaves(&self, leaves: &Vec<CachedItem>, batch_id: u64) -> anyhow::Result<()> {
-        const INSERT_QUERY: &str = "INSERT INTO leaves (key, commitment, value, batch_id) VALUES (?1, ?2, ?3, ?4)";
+        const INSERT_QUERY: &str =
+            "INSERT INTO leaves (key, commitment, value, batch_id) VALUES (?1, ?2, ?3, ?4)";
 
         for item in leaves {
             self.conn.execute(
@@ -32,7 +32,7 @@ impl<'a> TrieDB<'a> {
                     item.commitment.to_be_bytes().to_vec(),
                     item.value,
                     &batch_id
-                ]
+                ],
             )?;
         }
 
@@ -40,7 +40,8 @@ impl<'a> TrieDB<'a> {
     }
 
     pub fn persist_nodes(&self, nodes: Vec<(StoredNode, Felt, u64)>) -> anyhow::Result<()> {
-        const INSERT_QUERY: &str = "INSERT INTO trie_nodes (hash, data, trie_idx) VALUES (?1, ?2, ?3)";
+        const INSERT_QUERY: &str =
+            "INSERT INTO trie_nodes (hash, data, trie_idx) VALUES (?1, ?2, ?3)";
         let mut write_buffer = [0u8; 256];
         for (node, hash, trie_idx) in nodes {
             let length = node.encode(&mut write_buffer).context("Encoding node")?;
@@ -58,13 +59,13 @@ impl<'a> TrieDB<'a> {
     }
 
     pub fn get_node_idx(&self) -> anyhow::Result<u64> {
-        let mut stmt = self.conn.prepare_cached(
-            "SELECT MAX(trie_idx) FROM trie_nodes",
-        )?;
+        let mut stmt = self
+            .conn
+            .prepare_cached("SELECT MAX(trie_idx) FROM trie_nodes")?;
 
-        let trie_idx: Option<u64> = stmt.query_row([], |row| {
-            row.get::<_, Option<u64>>(0)
-        }).optional()? // Using optional to handle no rows found situation gracefully
+        let trie_idx: Option<u64> = stmt
+            .query_row([], |row| row.get::<_, Option<u64>>(0))
+            .optional()? // Using optional to handle no rows found situation gracefully
             .flatten(); // Flatten to convert Option<Option<u64>> to Option<u64>
 
         Ok(trie_idx.map_or(0, |idx| idx))
@@ -73,16 +74,17 @@ impl<'a> TrieDB<'a> {
 
 impl Storage for TrieDB<'_> {
     fn get(&self, index: u64) -> anyhow::Result<Option<StoredNode>> {
-        let mut stmt = self.conn
-            .prepare_cached(&format!("SELECT data FROM trie_nodes WHERE trie_idx = ?"))
+        let mut stmt = self
+            .conn
+            .prepare_cached("SELECT data FROM trie_nodes WHERE trie_idx = ?")
             .context("Creating get statement")?;
 
         let Some(data): Option<Vec<u8>> = stmt
             .query_row(params![&index], |row| row.get(0))
             .optional()?
-            else {
-                return Ok(None);
-            };
+        else {
+            return Ok(None);
+        };
 
         let node = StoredNode::decode(&data).context("Decoding node")?;
 
@@ -90,31 +92,36 @@ impl Storage for TrieDB<'_> {
     }
 
     fn hash(&self, index: u64) -> anyhow::Result<Option<Felt>> {
-        let mut stmt =  self.conn
-            .prepare_cached(&format!("SELECT hash FROM trie_nodes WHERE trie_idx = ?"))
+        let mut stmt = self
+            .conn
+            .prepare_cached("SELECT hash FROM trie_nodes WHERE trie_idx = ?")
             .context("Creating get statement")?;
 
         let Some(data): Option<Vec<u8>> = stmt
             .query_row(params![&index], |row| row.get(0))
             .optional()?
-            else {
-                return Ok(None);
-            };
+        else {
+            return Ok(None);
+        };
 
         Ok(Some(Felt::from_be_slice(&data)?))
     }
 
     fn leaf(&self, path: &BitSlice<u8, Msb0>) -> anyhow::Result<Option<Felt>> {
-        let mut stmt = self.conn
-            .prepare_cached(&format!("SELECT commitment FROM leaves WHERE key = ?"))
+        let mut stmt = self
+            .conn
+            .prepare_cached("SELECT commitment FROM leaves WHERE key = ?")
             .context("Creating get statement")?;
 
         let Some(data): Option<Vec<u8>> = stmt
-            .query_row(params![Felt::from_bits(path)?.to_be_bytes().to_vec()], |row| row.get(0))
+            .query_row(
+                params![Felt::from_bits(path)?.to_be_bytes().to_vec()],
+                |row| row.get(0),
+            )
             .optional()?
-            else {
-                return Ok(None);
-            };
+        else {
+            return Ok(None);
+        };
 
         Ok(Some(Felt::from_be_slice(&data)?))
     }

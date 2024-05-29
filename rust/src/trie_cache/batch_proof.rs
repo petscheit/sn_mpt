@@ -3,9 +3,8 @@ use pathfinder_common::trie::TrieNode;
 use pathfinder_crypto::Felt;
 use serde::Serialize;
 
-use std::collections::HashMap;
-use serde_json::to_string_pretty;
 use crate::trie_cache::item::CachedItem;
+use std::collections::HashMap;
 
 #[derive(Serialize, Debug)]
 pub struct LeafUpdate {
@@ -42,7 +41,7 @@ impl BatchProof {
         batch_id: &u64,
     ) -> Self {
         let mut batch_proof = BatchProof {
-            id: batch_id.clone(),
+            id: *batch_id,
             pre_root: hex::encode(pre_root.to_be_bytes()),
             post_root: hex::encode(post_root.to_be_bytes()),
             preimage: HashMap::new(),
@@ -77,9 +76,5 @@ impl BatchProof {
                 }
             }
         });
-    }
-
-    pub fn to_json(&self) -> String {
-        to_string_pretty(&self).unwrap()
     }
 }

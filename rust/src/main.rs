@@ -1,15 +1,11 @@
 use std::sync::Arc;
-use pathfinder_common::hash::{FeltHash, PoseidonHash};
-use tokio::sync::Mutex;
 
-mod items;
-mod routes;
+mod db;
 mod handlers;
 mod models;
-mod db;
+mod routes;
 mod trie_cache;
 
-use warp::Filter;
 use crate::db::ConnectionManager;
 // use crate::trie_cache::proxy::TrieCacheProxy;
 

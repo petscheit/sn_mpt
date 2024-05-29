@@ -1,41 +1,41 @@
 use super::item::CachedItem;
-use anyhow::anyhow;
-use pathfinder_common::hash::{FeltHash, PoseidonHash};
-use pathfinder_crypto::Felt;
-use pathfinder_merkle_tree::tree::MerkleTree;
-use pathfinder_storage::{Node, NodeRef, StoredNode, TrieUpdate};
-use pathfinder_common::trie::TrieNode;
-use pathfinder_merkle_tree::storage::Storage;
-use r2d2::PooledConnection;
-use r2d2_sqlite::SqliteConnectionManager;
 use crate::db::trie::TrieDB;
 use crate::trie_cache::batch_proof::{BatchProof, LeafUpdate};
+use anyhow::anyhow;
+use pathfinder_common::hash::PoseidonHash;
+use pathfinder_common::trie::TrieNode;
+use pathfinder_crypto::Felt;
+use pathfinder_merkle_tree::storage::Storage;
+use pathfinder_merkle_tree::tree::MerkleTree;
+use pathfinder_storage::{Node, NodeRef, StoredNode, TrieUpdate};
+use r2d2::PooledConnection;
+use r2d2_sqlite::SqliteConnectionManager;
 
 pub struct Trie {}
 
 impl Trie {
-    pub fn load(root_idx: u64, conn: &PooledConnection<SqliteConnectionManager>) -> (TrieDB, MerkleTree<PoseidonHash, 251>) {
+    pub fn load(
+        root_idx: u64,
+        conn: &PooledConnection<SqliteConnectionManager>,
+    ) -> (TrieDB, MerkleTree<PoseidonHash, 251>) {
         let storage = TrieDB::new(conn);
         let trie = MerkleTree::<PoseidonHash, 251>::new(root_idx);
 
         (storage, trie)
     }
-    pub fn new(conn: &PooledConnection<SqliteConnectionManager>) -> (TrieDB, MerkleTree<PoseidonHash, 251>) {
+    pub fn new(
+        conn: &PooledConnection<SqliteConnectionManager>,
+    ) -> (TrieDB, MerkleTree<PoseidonHash, 251>) {
         let mut trie = MerkleTree::<PoseidonHash, 251>::empty();
         let storage = TrieDB::new(conn);
         // We need to insert and persist a dummy item to initialize the storage for now.
         // ToDo: figure out how to get around this
         let item = CachedItem::new(vec![0; 32]);
-        let _ = trie.set(
-            &storage,
-            item.key.view_bits().to_bitvec(),
-            item.commitment,
-        );
+        let _ = trie.set(&storage, item.key.view_bits().to_bitvec(), item.commitment);
         let update = trie.clone().commit(&storage).unwrap();
         let _ = Trie::persist_batch(storage, &update, &vec![item], &0);
 
         (storage, trie)
-
     }
 
     pub fn persist_batch_and_generate_proofs(
@@ -48,7 +48,7 @@ impl Trie {
         let mut leaf_updates: Vec<LeafUpdate> = vec![];
         let mut proofs: Vec<Vec<TrieNode>> = vec![];
 
-        let pre_root = storage.hash(root_idx)?.unwrap_or_else(|| Felt::ZERO);
+        let pre_root = storage.hash(root_idx)?.unwrap_or(Felt::ZERO);
 
         // Write new leafs to tree and generate pre-insert proofs
         items.iter().try_for_each(|item| {
@@ -59,11 +59,7 @@ impl Trie {
             )?
             .ok_or(anyhow!("Pre-insert proof not found"))?;
 
-            trie.set(
-                &storage,
-                item.key.view_bits().to_bitvec(),
-                item.commitment,
-            )?;
+            trie.set(&storage, item.key.view_bits().to_bitvec(), item.commitment)?;
 
             leaf_updates.push(item.into());
             proofs.push(proof);
@@ -73,7 +69,7 @@ impl Trie {
 
         // Commit update and persist new leafs to storage
         let update = trie.clone().commit(&storage)?; // This clone is a crime
-        let _ = Trie::persist_batch(storage, &update, &items, batch_id)?;
+        Trie::persist_batch(storage, &update, &items, batch_id)?;
         let next_index = root_idx + update.nodes_added.len() as u64;
 
         // Generate post-insert proofs
@@ -88,19 +84,24 @@ impl Trie {
             Ok::<(), anyhow::Error>(())
         })?;
 
-        Ok(
-            (BatchProof::new::<PoseidonHash>(
+        Ok((
+            BatchProof::new::<PoseidonHash>(
                 pre_root,
                 update.root_commitment,
                 leaf_updates,
                 proofs,
                 batch_id,
             ),
-            next_index)
-        )
+            next_index,
+        ))
     }
 
-    fn persist_batch(storage: TrieDB, update: &TrieUpdate, items: &Vec<CachedItem>, batch_id: &u64) -> anyhow::Result<()> {
+    fn persist_batch(
+        storage: TrieDB,
+        update: &TrieUpdate,
+        items: &Vec<CachedItem>,
+        batch_id: &u64,
+    ) -> anyhow::Result<()> {
         let next_index = storage.get_node_idx()? + 1;
         let mut nodes_to_persist: Vec<(StoredNode, Felt, u64)> = vec![];
 
@@ -144,34 +145,4 @@ impl Trie {
 
         Ok(())
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::items::CachedItem;
-    use pathfinder_common::hash::PoseidonHash;
-
-    // #[test]
-    // fn commit_batch_successfully_commits_and_updates_state() {
-    //     let mut cache_tree = Trie::<PoseidonHash, 10>::new();
-    //     let items: Vec<_> = (0..10).map(|_| CachedItem::default()).collect();
-    //
-    //     let result = cache_tree.commit_batch(items, &1).unwrap();
-    //
-    //     assert_eq!(
-    //         hex::encode(cache_tree.latest_root.to_be_bytes()),
-    //         result.post_root
-    //     );
-    //     assert_eq!(
-    //         cache_tree.root_to_index.get(&cache_tree.latest_root),
-    //         Some(&4)
-    //     );
-    //
-    //     let next_items: Vec<_> = (0..10).map(|_| CachedItem::default()).collect();
-    //     let next_result = cache_tree.commit_batch(next_items, &1).unwrap();
-    //
-    //     // ensure the transistion roots are the same
-    //     assert_eq!(result.post_root, next_result.pre_root);
-    // }
 }

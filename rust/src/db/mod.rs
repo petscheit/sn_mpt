@@ -1,15 +1,11 @@
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use pathfinder_common::hash::FeltHash;
-use rusqlite::{Connection};
-use crate::db::trie::TrieDB;
 
-pub mod trie;
 pub mod batch;
+pub mod trie;
 
-
-use r2d2_sqlite::SqliteConnectionManager;
 use r2d2::{Pool, PooledConnection};
+use r2d2_sqlite::SqliteConnectionManager;
 
 #[derive(Debug)]
 pub struct ConnectionManager {
@@ -19,7 +15,7 @@ pub struct ConnectionManager {
 impl ConnectionManager {
     /// Creates a new ConnectionManager with a connection pool to the specified database file.
     pub fn new(file: &str, test_mode: bool) -> Self {
-         let db_file = if test_mode {
+        let db_file = if test_mode {
             let start = SystemTime::now();
             let since_the_epoch = start.duration_since(UNIX_EPOCH).unwrap();
             let timestamp = since_the_epoch.as_secs();

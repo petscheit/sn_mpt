@@ -5,7 +5,6 @@ use pathfinder_crypto::{Felt, MontFelt};
 use rand::prelude::StdRng;
 #[cfg(test)]
 use rand::{Rng, SeedableRng};
-use rusqlite::{params, ToSql};
 
 #[derive(Debug, Clone)]
 pub struct CachedItem {
@@ -34,7 +33,7 @@ impl CachedItem {
     }
 }
 
-fn vec_to_mont_felts(data: &Vec<u8>) -> Vec<MontFelt> {
+fn vec_to_mont_felts(data: &[u8]) -> Vec<MontFelt> {
     const CHUNK_SIZE: usize = 32;
     let mut mont_felts = Vec::with_capacity((data.len() + CHUNK_SIZE - 1) / CHUNK_SIZE);
     for chunk in data.chunks(CHUNK_SIZE) {
