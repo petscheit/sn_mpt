@@ -1,4 +1,3 @@
-use crate::items::CachedItem;
 use pathfinder_common::hash::FeltHash;
 use pathfinder_common::trie::TrieNode;
 use pathfinder_crypto::Felt;
@@ -6,6 +5,7 @@ use serde::Serialize;
 
 use std::collections::HashMap;
 use serde_json::to_string_pretty;
+use crate::trie_cache::item::CachedItem;
 
 #[derive(Serialize, Debug)]
 pub struct LeafUpdate {
