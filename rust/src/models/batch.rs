@@ -1,3 +1,4 @@
+use crate::TrieCacheError;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -27,14 +28,14 @@ impl BatchStatus {
 }
 
 impl FromStr for BatchStatus {
-    type Err = warp::Rejection;
+    type Err = TrieCacheError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "created" => Ok(BatchStatus::Created),
             "finalized" => Ok(BatchStatus::Finalized),
             "reverted" => Ok(BatchStatus::Reverted),
-            _ => Err(warp::reject::not_found()),
+            _ => Err(TrieCacheError::InvalidBatchStatus),
         }
     }
 }

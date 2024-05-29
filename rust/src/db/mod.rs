@@ -4,6 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub mod batch;
 pub mod trie;
 
+use crate::TrieCacheError;
 use r2d2::{Pool, PooledConnection};
 use r2d2_sqlite::SqliteConnectionManager;
 
@@ -31,11 +32,13 @@ impl ConnectionManager {
     }
 
     /// Gets a connection from the pool.
-    pub fn get_connection(&self) -> anyhow::Result<PooledConnection<SqliteConnectionManager>> {
+    pub fn get_connection(
+        &self,
+    ) -> Result<PooledConnection<SqliteConnectionManager>, TrieCacheError> {
         Ok(self.pool.get()?)
     }
 
-    pub fn create_table(&self) -> anyhow::Result<()> {
+    pub fn create_table(&self) -> Result<(), TrieCacheError> {
         self.get_connection()?.execute(
             "CREATE TABLE IF NOT EXISTS trie_nodes (
                 idx INTEGER PRIMARY KEY,

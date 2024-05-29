@@ -1,7 +1,7 @@
 use super::item::CachedItem;
 use crate::db::trie::TrieDB;
 use crate::trie_cache::batch_proof::{BatchProof, LeafUpdate};
-use anyhow::anyhow;
+use crate::TrieCacheError;
 use pathfinder_common::hash::PoseidonHash;
 use pathfinder_common::trie::TrieNode;
 use pathfinder_crypto::Felt;
@@ -44,11 +44,15 @@ impl Trie {
         root_idx: u64,
         items: Vec<CachedItem>,
         batch_id: &u64,
-    ) -> anyhow::Result<(BatchProof, u64)> {
+    ) -> Result<(BatchProof, u64), TrieCacheError> {
         let mut leaf_updates: Vec<LeafUpdate> = vec![];
         let mut proofs: Vec<Vec<TrieNode>> = vec![];
 
-        let pre_root = storage.hash(root_idx)?.unwrap_or(Felt::ZERO);
+        let pre_root = match storage.hash(root_idx) {
+            Ok(Some(root)) => root,
+            Ok(None) => return Err(TrieCacheError::NodeNotFound),
+            Err(e) => return Err(TrieCacheError::from(e)),
+        };
 
         // Write new leafs to tree and generate pre-insert proofs
         items.iter().try_for_each(|item| {
@@ -56,15 +60,17 @@ impl Trie {
                 root_idx,
                 &storage,
                 &item.key.view_bits().to_bitvec(),
-            )?
-            .ok_or(anyhow!("Pre-insert proof not found"))?;
+            )
+            .map_err(|_| TrieCacheError::ProofGenerationError)?
+            .ok_or(TrieCacheError::ProofGenerationError)?;
 
-            trie.set(&storage, item.key.view_bits().to_bitvec(), item.commitment)?;
+            trie.set(&storage, item.key.view_bits().to_bitvec(), item.commitment)
+                .map_err(TrieCacheError::from)?;
 
             leaf_updates.push(item.into());
             proofs.push(proof);
 
-            Ok::<(), anyhow::Error>(())
+            Ok::<(), TrieCacheError>(())
         })?;
 
         // Commit update and persist new leafs to storage
@@ -78,10 +84,11 @@ impl Trie {
                 next_index,
                 &storage,
                 &item.key.view_bits().to_bitvec(),
-            )?
-            .ok_or(anyhow!("No proof found"))?;
+            )
+            .map_err(|_| TrieCacheError::ProofGenerationError)?
+            .ok_or(TrieCacheError::ProofGenerationError)?;
             proofs.push(proof);
-            Ok::<(), anyhow::Error>(())
+            Ok::<(), TrieCacheError>(())
         })?;
 
         Ok((
@@ -101,7 +108,7 @@ impl Trie {
         update: &TrieUpdate,
         items: &Vec<CachedItem>,
         batch_id: &u64,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), TrieCacheError> {
         let next_index = storage.get_node_idx()? + 1;
         let mut nodes_to_persist: Vec<(StoredNode, Felt, u64)> = vec![];
 

@@ -9,6 +9,7 @@ use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{params, OptionalExtension};
 
 use crate::trie_cache::item::CachedItem;
+use crate::TrieCacheError;
 
 #[derive(Debug, Clone, Copy)]
 pub struct TrieDB<'a> {
@@ -20,45 +21,55 @@ impl<'a> TrieDB<'a> {
         Self { conn }
     }
 
-    pub fn persist_leaves(&self, leaves: &Vec<CachedItem>, batch_id: u64) -> anyhow::Result<()> {
+    pub fn persist_leaves(
+        &self,
+        leaves: &Vec<CachedItem>,
+        batch_id: u64,
+    ) -> Result<(), TrieCacheError> {
         const INSERT_QUERY: &str =
             "INSERT INTO leaves (key, commitment, value, batch_id) VALUES (?1, ?2, ?3, ?4)";
 
         for item in leaves {
-            self.conn.execute(
-                INSERT_QUERY,
-                params![
-                    item.key.to_be_bytes().to_vec(),
-                    item.commitment.to_be_bytes().to_vec(),
-                    item.value,
-                    &batch_id
-                ],
-            )?;
+            self.conn
+                .execute(
+                    INSERT_QUERY,
+                    params![
+                        item.key.to_be_bytes().to_vec(),
+                        item.commitment.to_be_bytes().to_vec(),
+                        item.value,
+                        &batch_id
+                    ],
+                )
+                .map_err(TrieCacheError::from)?;
         }
 
         Ok(())
     }
 
-    pub fn persist_nodes(&self, nodes: Vec<(StoredNode, Felt, u64)>) -> anyhow::Result<()> {
+    pub fn persist_nodes(&self, nodes: Vec<(StoredNode, Felt, u64)>) -> Result<(), TrieCacheError> {
         const INSERT_QUERY: &str =
             "INSERT INTO trie_nodes (hash, data, trie_idx) VALUES (?1, ?2, ?3)";
         let mut write_buffer = [0u8; 256];
         for (node, hash, trie_idx) in nodes {
-            let length = node.encode(&mut write_buffer).context("Encoding node")?;
-            self.conn.execute(
-                INSERT_QUERY,
-                params![
-                    hash.to_be_bytes().to_vec(),
-                    write_buffer[..length].to_vec(),
-                    trie_idx,
-                ],
-            )?;
+            let length = node
+                .encode(&mut write_buffer)
+                .map_err(|_| TrieCacheError::NodeEncodingError)?;
+            self.conn
+                .execute(
+                    INSERT_QUERY,
+                    params![
+                        hash.to_be_bytes().to_vec(),
+                        write_buffer[..length].to_vec(),
+                        trie_idx,
+                    ],
+                )
+                .map_err(TrieCacheError::from)?;
         }
 
         Ok(())
     }
 
-    pub fn get_node_idx(&self) -> anyhow::Result<u64> {
+    pub fn get_node_idx(&self) -> Result<u64, TrieCacheError> {
         let mut stmt = self
             .conn
             .prepare_cached("SELECT MAX(trie_idx) FROM trie_nodes")?;
@@ -94,8 +105,7 @@ impl Storage for TrieDB<'_> {
     fn hash(&self, index: u64) -> anyhow::Result<Option<Felt>> {
         let mut stmt = self
             .conn
-            .prepare_cached("SELECT hash FROM trie_nodes WHERE trie_idx = ?")
-            .context("Creating get statement")?;
+            .prepare_cached("SELECT hash FROM trie_nodes WHERE trie_idx = ?")?;
 
         let Some(data): Option<Vec<u8>> = stmt
             .query_row(params![&index], |row| row.get(0))
