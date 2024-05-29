@@ -4,3 +4,5 @@ rust/target
 
 rust/*.json
 cairo0/build
+
+*.db
