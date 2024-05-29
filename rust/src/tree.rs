@@ -1,6 +1,6 @@
 use crate::batch_proof::{BatchProof, LeafUpdate};
 use crate::items::CachedItem;
-use crate::persistance::Persistance;
+use crate::persistance::{CacheDB, Persistance};
 use anyhow::anyhow;
 use pathfinder_common::hash::FeltHash;
 use pathfinder_common::trie::TrieNode;
@@ -8,21 +8,19 @@ use pathfinder_crypto::Felt;
 use pathfinder_merkle_tree::tree::MerkleTree;
 use pathfinder_storage::{Node, NodeRef, StoredNode, TrieUpdate};
 use std::collections::HashMap;
+use pathfinder_merkle_tree::storage::Storage;
+use crate::cache::BatchStatus;
 
 pub struct CacheTree<H: FeltHash, const HEIGHT: usize> {
     trie: MerkleTree<H, HEIGHT>,
     storage: Persistance,
-    latest_root: Felt,
-    root_to_index: HashMap<Felt, u64>,
 }
 
 impl<H: FeltHash, const HEIGHT: usize> CacheTree<H, HEIGHT> {
     pub fn new() -> Self {
         let mut cache = CacheTree::<H, HEIGHT> {
             trie: MerkleTree::<H, HEIGHT>::empty(),
-            storage: Persistance::default(),
-            latest_root: Felt::ZERO,
-            root_to_index: HashMap::new(),
+            storage: Persistance::new(),
         };
 
         // We need to insert and persist a dummy item to initialize the storage for now.
@@ -34,10 +32,7 @@ impl<H: FeltHash, const HEIGHT: usize> CacheTree<H, HEIGHT> {
             item.commitment,
         );
         let update = cache.trie.clone().commit(&cache.storage).unwrap();
-        let _ = cache.persist_update(&update, &0);
-
-        cache.latest_root = update.root_commitment;
-        cache.root_to_index.insert(cache.latest_root, 0);
+        let _ = cache.persist_update(&update, &vec![item], &0);
 
         cache
     }
@@ -45,13 +40,13 @@ impl<H: FeltHash, const HEIGHT: usize> CacheTree<H, HEIGHT> {
     pub fn commit_batch(
         &mut self,
         items: Vec<CachedItem>,
-        _batch_id: &u64,
-    ) -> anyhow::Result<BatchProof> {
+        batch_id: &u64,
+    ) -> anyhow::Result<(BatchProof, u64)> {
         let mut leaf_updates: Vec<LeafUpdate> = vec![];
         let mut proofs: Vec<Vec<TrieNode>> = vec![];
 
-        let root_index_pre = *self.root_to_index.get(&self.latest_root).unwrap_or(&0);
-        let pre_root = self.latest_root;
+        let root_index_pre = self.storage.get_next_node_idx()? - 1;
+        let pre_root = self.storage.hash(root_index_pre)?.unwrap_or_else(|| Felt::ZERO);
 
         // Write new leafs to trie and generate pre-insert proofs
         items.iter().try_for_each(|item| {
@@ -76,7 +71,8 @@ impl<H: FeltHash, const HEIGHT: usize> CacheTree<H, HEIGHT> {
 
         // Commit update and persist new leafs to storage
         let update = self.trie.clone().commit(&self.storage)?; // This clone is a crime
-        let next_index = self.persist_update(&update, _batch_id)?;
+        let _ = self.persist_update(&update, &items, batch_id)?;
+        let next_index = root_index_pre + update.nodes_added.len() as u64;
 
         // Generate post-insert proofs
         items.iter().try_for_each(|item| {
@@ -90,31 +86,21 @@ impl<H: FeltHash, const HEIGHT: usize> CacheTree<H, HEIGHT> {
             Ok::<(), anyhow::Error>(())
         })?;
 
-        // Update local state to reflect the new root
-        self.latest_root = update.root_commitment;
-        self.root_to_index.insert(self.latest_root, next_index);
-
-        Ok(BatchProof::new::<H>(
-            pre_root,
-            self.latest_root,
-            leaf_updates,
-            proofs,
-        ))
+        Ok(
+            (BatchProof::new::<H>(
+                pre_root,
+                update.root_commitment,
+                leaf_updates,
+                proofs,
+                batch_id,
+            ),
+            next_index)
+        )
     }
 
-    fn persist_update(&mut self, update: &TrieUpdate, _batch_id: &u64) -> anyhow::Result<u64> {
-        // Insert new leaves into storage
-        for (key, value) in &self.trie.leaves {
-            let key = Felt::from_bits(key).unwrap();
-            let _ = &self.storage.leaves.insert(key, *value);
-            // ToDo: Probably we should empty the trie leaves here
-        }
-
-        //  if prune_nodes {
-        //     for idx in update.nodes_removed {
-        //         let _ = &self.storage.nodes.remove(&idx);
-        //     }
-        // }
+    fn persist_update(&mut self, update: &TrieUpdate, items: &Vec<CachedItem>, batch_id: &u64) -> anyhow::Result<()> {
+        let next_index = self.storage.get_next_node_idx()?;
+        let mut nodes_to_persist: Vec<(StoredNode, Felt, u64)> = vec![];
 
         // Insert new nodes into storage
         for (rel_index, (hash, node)) in update.nodes_added.iter().enumerate() {
@@ -122,12 +108,12 @@ impl<H: FeltHash, const HEIGHT: usize> CacheTree<H, HEIGHT> {
                 Node::Binary { left, right } => {
                     let left = match left {
                         NodeRef::StorageIndex(idx) => *idx,
-                        NodeRef::Index(idx) => self.storage.next_index + (*idx as u64),
+                        NodeRef::Index(idx) => next_index + (*idx as u64),
                     };
 
                     let right = match right {
                         NodeRef::StorageIndex(idx) => *idx,
-                        NodeRef::Index(idx) => self.storage.next_index + (*idx as u64),
+                        NodeRef::Index(idx) => next_index + (*idx as u64),
                     };
 
                     StoredNode::Binary { left, right }
@@ -135,7 +121,7 @@ impl<H: FeltHash, const HEIGHT: usize> CacheTree<H, HEIGHT> {
                 Node::Edge { child, path } => {
                     let child = match child {
                         NodeRef::StorageIndex(idx) => *idx,
-                        NodeRef::Index(idx) => self.storage.next_index + (*idx as u64),
+                        NodeRef::Index(idx) => next_index + (*idx as u64),
                     };
 
                     StoredNode::Edge {
@@ -147,21 +133,24 @@ impl<H: FeltHash, const HEIGHT: usize> CacheTree<H, HEIGHT> {
                 Node::LeafEdge { path } => StoredNode::LeafEdge { path: path.clone() },
             };
 
-            let index = self.storage.next_index + (rel_index as u64);
-
-            let _ = self.storage.nodes.insert(index, (*hash, node));
+            let index = next_index + (rel_index as u64);
+            nodes_to_persist.push((node, *hash, index));
         }
 
-        // Update local state to reflect the new root
-        let number_of_nodes_added = update.nodes_added.len() as u64;
-        let storage_root_index = self.storage.next_index + number_of_nodes_added - 1;
-        self.storage.next_index += number_of_nodes_added;
+        self.storage.persist_nodes(nodes_to_persist)?;
+        self.storage.persist_leaves(items, *batch_id)?;
 
-        Ok(storage_root_index)
+        // Remove leaves from trie memory
+        for item in items {
+            self.trie.leaves.remove(&item.key.view_bits().to_bitvec());
+        }
+
+        Ok(())
     }
 
-    pub fn finalize_batch(&mut self, _batch_id: &u64) -> anyhow::Result<()> {
+    pub fn finalize_batch(&mut self, batch_id: &u64) -> anyhow::Result<()> {
         // Update the status of the batch to reflect that it has been finalized
+        self.storage.update_batch_status(batch_id, BatchStatus::Finalized)?;
 
         Ok(())
     }

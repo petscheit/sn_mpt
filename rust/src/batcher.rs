@@ -5,12 +5,17 @@ use anyhow::anyhow;
 use pathfinder_common::hash::FeltHash;
 use std::cmp::PartialEq;
 use std::collections::HashMap;
+use rusqlite::ToSql;
+use crate::db::DB;
+use crate::persistance::Persistance;
+
 
 pub struct Batcher<H: FeltHash, const HEIGHT: usize> {
     finalized: u64,
     latest: u64,
     batches: HashMap<u64, Batch>,
     tree: CacheTree<H, HEIGHT>,
+    db: DB
 }
 
 impl<H: FeltHash, const HEIGHT: usize> Batcher<H, HEIGHT> {
@@ -20,10 +25,11 @@ impl<H: FeltHash, const HEIGHT: usize> Batcher<H, HEIGHT> {
             latest: 0,
             batches: HashMap::new(),
             tree: CacheTree::<H, HEIGHT>::new(),
+            db: DB::new("database.db".to_string()).unwrap()
         }
     }
 
-    pub fn add_batch(&mut self, items: Vec<CachedItem>) -> anyhow::Result<(u64, BatchProof)> {
+    pub fn add_batch(&mut self, items: Vec<CachedItem>) -> anyhow::Result<BatchProof> {
         let id = self.latest + 1;
 
         let batch_proof = self.tree.commit_batch(items, &id)?;
@@ -41,7 +47,7 @@ impl<H: FeltHash, const HEIGHT: usize> Batcher<H, HEIGHT> {
         self.latest = id;
         self.batches.insert(id, batch);
 
-        Ok((id, batch_proof))
+        Ok(batch_proof)
     }
 
     pub fn finalize_batch(&mut self, batch_id: u64) -> anyhow::Result<()> {
@@ -73,9 +79,9 @@ impl<H: FeltHash, const HEIGHT: usize> Batcher<H, HEIGHT> {
 
 #[derive(Debug)]
 pub struct Batch {
-    id: u64,
-    parent_id: Option<u64>, // id of the parent batch
-    status: BatchStatus,    // status of batch
+    pub(crate) id: u64,
+    pub(crate) parent_id: Option<u64>, // id of the parent batch
+    pub(crate) status: BatchStatus,    // status of batch
 }
 
 impl Batch {
@@ -85,12 +91,10 @@ impl Batch {
 }
 
 #[derive(Debug, PartialEq)]
-enum BatchStatus {
-    // Scheduled,
-    Proving,
-    // Ready,
-    Finalized,
-    // Reverted,
+pub enum BatchStatus {
+    Created = 1,
+    Finalized = 2,
+    Reverted = 3,
 }
 
 #[cfg(test)]
