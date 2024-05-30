@@ -13,7 +13,18 @@ use r2d2_sqlite::SqliteConnectionManager;
 
 pub struct Trie {}
 
+/// The Trie struct represents a Merkle Trie data structure.
 impl Trie {
+    /// Loads a Trie from the given root index and database connection.
+    ///
+    /// # Arguments
+    ///
+    /// * `root_idx` - The root index of the Trie.
+    /// * `conn` - The database connection.
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing the TrieDB and the MerkleTree.
     pub fn load(
         root_idx: u64,
         conn: &PooledConnection<SqliteConnectionManager>,
@@ -23,6 +34,16 @@ impl Trie {
 
         (storage, trie)
     }
+
+    /// Creates a new Trie using the given database connection.
+    ///
+    /// # Arguments
+    ///
+    /// * `conn` - The database connection.
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing the TrieDB and the MerkleTree.
     pub fn new(
         conn: &PooledConnection<SqliteConnectionManager>,
     ) -> (TrieDB, MerkleTree<PoseidonHash, 251>) {
@@ -38,6 +59,19 @@ impl Trie {
         (storage, trie)
     }
 
+    /// Adds a batch of items to the Database, and generates the required proofs verifying the transition.
+    ///
+    /// # Arguments
+    ///
+    /// * `storage` - The TrieDB.
+    /// * `trie` - The MerkleTree.
+    /// * `root_idx` - The root index of the Trie.
+    /// * `items` - The items to be persisted.
+    /// * `batch_id` - The batch ID.
+    ///
+    /// # Returns
+    ///
+    /// A Result containing the BatchProof and the next index.
     pub fn persist_batch_and_generate_proofs(
         storage: TrieDB,
         mut trie: MerkleTree<PoseidonHash, 251>,
@@ -74,7 +108,7 @@ impl Trie {
         })?;
 
         // Commit update and persist new leafs to storage
-        let update = trie.commit(&storage)?; // This clone is a crime
+        let update = trie.commit(&storage)?;
         Trie::persist_batch_items(storage, &update, &items, batch_id)?;
         let next_index = root_idx + update.nodes_added.len() as u64;
 
@@ -103,6 +137,18 @@ impl Trie {
         ))
     }
 
+    /// Persists batch items and corresponding nodes to the TrieDB.
+    ///
+    /// # Arguments
+    ///
+    /// * `storage` - The TrieDB.
+    /// * `update` - The TrieUpdate.
+    /// * `items` - The items to be persisted.
+    /// * `batch_id` - The batch ID.
+    ///
+    /// # Returns
+    ///
+    /// A Result indicating success or failure.
     fn persist_batch_items(
         storage: TrieDB,
         update: &TrieUpdate,

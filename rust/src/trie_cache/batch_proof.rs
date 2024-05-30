@@ -6,6 +6,7 @@ use serde::Serialize;
 use crate::trie_cache::item::CachedItem;
 use std::collections::HashMap;
 
+/// Represents a leaf update in the batch proof.
 #[derive(Serialize, Debug)]
 pub struct LeafUpdate {
     pub key: String,
@@ -14,6 +15,7 @@ pub struct LeafUpdate {
 }
 
 impl From<&CachedItem> for LeafUpdate {
+    /// Converts a `CachedItem` into a `LeafUpdate`.
     fn from(item: &CachedItem) -> Self {
         LeafUpdate {
             key: hex::encode(item.key.to_be_bytes()),
@@ -23,6 +25,7 @@ impl From<&CachedItem> for LeafUpdate {
     }
 }
 
+/// Represents a batch proof.
 #[derive(Serialize, Debug)]
 pub struct BatchProof {
     pub id: u64,
@@ -33,6 +36,19 @@ pub struct BatchProof {
 }
 
 impl BatchProof {
+    /// Creates a new `BatchProof` which is compatible with the cairo0 verification program.
+    ///
+    /// # Arguments
+    ///
+    /// * `pre_root` - The pre-update root hash.
+    /// * `post_root` - The post-update root hash.
+    /// * `leaf_updates` - The list of leaf updates.
+    /// * `proofs` - The list of proofs.
+    /// * `batch_id` - The batch ID.
+    ///
+    /// # Returns
+    ///
+    /// A new `BatchProof` instance.
     pub fn new<H: FeltHash>(
         pre_root: Felt,
         post_root: Felt,

@@ -1,4 +1,5 @@
 use crate::TrieCacheError;
+use rusqlite::Row;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -10,6 +11,20 @@ pub struct Batch {
     pub root_idx: u64,
 }
 
+impl TryFrom<&Row<'_>> for Batch {
+    type Error = rusqlite::Error;
+
+    fn try_from(row: &Row) -> Result<Self, Self::Error> {
+        let status: String = row.get(2)?;
+        Ok(Batch {
+            id: row.get(0)?,
+            parent_id: row.get(1)?,
+            status: BatchStatus::from_str(status.as_str()).unwrap_or(BatchStatus::Reverted),
+            root_idx: row.get(3)?,
+        })
+    }
+}
+
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum BatchStatus {
     Created = 1,
@@ -18,6 +33,11 @@ pub enum BatchStatus {
 }
 
 impl BatchStatus {
+    /// Converts the `BatchStatus` enum variant to its corresponding string representation.
+    ///
+    /// # Returns
+    ///
+    /// - The string representation of the `BatchStatus` enum variant.
     pub fn to_string(&self) -> String {
         match self {
             BatchStatus::Created => "created".to_string(),
