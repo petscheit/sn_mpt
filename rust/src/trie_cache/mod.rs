@@ -4,7 +4,7 @@ pub mod trie;
 use crate::models::batch::BatchStatus;
 use crate::trie_cache::batch_proof::BatchProof;
 use crate::trie_cache::item::CachedItem;
-use crate::{db, TrieCacheError};
+use crate::{db, errors::TrieCacheError};
 use r2d2::PooledConnection;
 use r2d2_sqlite::SqliteConnectionManager;
 use tracing::info;
@@ -103,51 +103,39 @@ impl TrieCache {
     }
 }
 
-
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
 
-    fn create_temp_database() -> Connection {
-        let temp_file = NamedTempFile::new().unwrap();
-        let temp_path = temp_file.path().to_str().unwrap().to_owned();
-        let conn = SqliteConnectionManager::file(&temp_path).connect().unwrap();
-        conn
-    }
-
     #[test]
-    fn test_create_batch() {
-        let conn = create_temp_database();
+    fn test_batch() {
+        let test_ctx = db::test::TestContext::new();
+        let conn = test_ctx.manager.get_connection().unwrap();
 
+        let items: Vec<_> = (0..10).map(|_| CachedItem::default()).collect();
+        let result = TrieCache::create_batch(&conn, items).unwrap();
+        assert_eq!(result.id, 1);
+        assert_eq!(
+            result.pre_root,
+            "07020e0f5c03f535f90ed3789c7f6e1aaa9694328a00a48a349d65d2f9870e72"
+        );
+        assert_eq!(
+            result.post_root,
+            "01737140f9fb422940bf92518c92455d6c08df6ef8f02333eec546512dd69ec4"
+        );
 
-        let result = TrieCache::create_batch(&conn, items);
+        let items_two = (0..10).map(|_| CachedItem::default()).collect();
+        let result_two = TrieCache::create_batch(&conn, items_two).unwrap();
+        assert_eq!(result_two.id, 2);
+        assert_eq!(result.post_root, result_two.pre_root);
 
-        assert!(result.is_ok());
-        let batch_proof = result.unwrap();
-        assert_eq!(batch_proof.proofs.len(), 2);
-    }
+        // Parent not finalized
+        assert!(TrieCache::update_batch_status(&conn, 2, BatchStatus::Finalized).is_err());
 
-    #[test]
-    fn test_update_batch_status_finalized() {
-        let conn = create_temp_database();
-        let batch_id = 1;
-        let status = BatchStatus::Finalized;
+        // Finalize parent
+        assert!(TrieCache::update_batch_status(&conn, 1, BatchStatus::Finalized).is_ok());
 
-        let result = TrieCache::update_batch_status(&conn, batch_id, status);
-
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_update_batch_status_not_finalized() {
-        let conn = create_temp_database();
-        let batch_id = 1;
-        let status = BatchStatus::Created;
-
-        let result = TrieCache::update_batch_status(&conn, batch_id, status);
-
-        assert!(result.is_err());
-        let error = result.unwrap_err();
-        assert_eq!(error, TrieCacheError::BatchParentNotFinalized);
+        // Finalize child
+        assert!(TrieCache::update_batch_status(&conn, 2, BatchStatus::Finalized).is_ok());
     }
 }

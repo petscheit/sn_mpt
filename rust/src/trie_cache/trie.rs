@@ -1,7 +1,7 @@
 use super::item::CachedItem;
 use crate::db::trie::TrieDB;
+use crate::errors::TrieCacheError;
 use crate::trie_cache::batch_proof::{BatchProof, LeafUpdate};
-use crate::TrieCacheError;
 use pathfinder_common::hash::PoseidonHash;
 use pathfinder_common::trie::TrieNode;
 use pathfinder_crypto::Felt;

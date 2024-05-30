@@ -1,10 +1,11 @@
-use std::sync::Arc;
-use tracing::{info, instrument};
 use crate::db::ConnectionManager;
 use crate::models::batch::BatchStatus;
 use crate::trie_cache::item::CachedItem;
 use crate::trie_cache::TrieCache;
-use crate::{db, TrieCacheError};
+use crate::{db, errors::TrieCacheError};
+use std::sync::Arc;
+use tracing::info;
+
 use warp::{http::StatusCode, Reply};
 
 /// Handler for listing batches.
@@ -46,16 +47,16 @@ pub async fn create_batch(
         .into_iter()
         .map(|hex| {
             hex::decode(hex)
-                .map(CachedItem::new)
-                .map_err(|_| warp::reject::custom(TrieCacheError::InvalidHexString))
+                    .map(CachedItem::new)
+                    .map_err(|_| TrieCacheError::InvalidHexString)
         })
         .collect::<Result<Vec<_>, _>>()?;
 
     let conn = manager.get_connection()?;
 
-    let proofs = TrieCache::create_batch(&conn, items);
+    let proofs = TrieCache::create_batch(&conn, items)?;
 
-    Ok(warp::reply::json(&proofs.unwrap()))
+    Ok(warp::reply::json(&proofs))
 }
 
 /// Handler for updating the status of a batch.

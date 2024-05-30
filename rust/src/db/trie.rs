@@ -8,8 +8,8 @@ use r2d2::PooledConnection;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{params, OptionalExtension};
 
+use crate::errors::TrieCacheError;
 use crate::trie_cache::item::CachedItem;
-use crate::TrieCacheError;
 
 /// Represents a Trie database.
 #[derive(Debug, Clone, Copy)]

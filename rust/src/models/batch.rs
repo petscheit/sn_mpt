@@ -1,9 +1,9 @@
-use crate::TrieCacheError;
+use crate::errors::TrieCacheError;
 use rusqlite::Row;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Batch {
     pub id: u64,
     pub parent_id: Option<u64>,

@@ -24,7 +24,7 @@ impl CachedItem {
         }
     }
 
-    fn commitment(value: &Vec<u8>) -> Felt {
+    fn commitment(value: &[u8]) -> Felt {
         poseidon_hash_many(&vec_to_mont_felts(value)).into()
     }
 

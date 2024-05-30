@@ -10,5 +10,4 @@ pub fn routes(
     manager: Arc<ConnectionManager>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     batch_routes(manager)
-
 }
