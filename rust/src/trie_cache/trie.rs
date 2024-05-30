@@ -33,7 +33,7 @@ impl Trie {
         let item = CachedItem::new(vec![0; 32]);
         let _ = trie.set(&storage, item.key.view_bits().to_bitvec(), item.commitment);
         let update = trie.clone().commit(&storage).unwrap();
-        let _ = Trie::persist_batch(storage, &update, &vec![item], &0);
+        let _ = Trie::persist_batch_items(storage, &update, &vec![item], &0);
 
         (storage, trie)
     }
@@ -74,8 +74,8 @@ impl Trie {
         })?;
 
         // Commit update and persist new leafs to storage
-        let update = trie.clone().commit(&storage)?; // This clone is a crime
-        Trie::persist_batch(storage, &update, &items, batch_id)?;
+        let update = trie.commit(&storage)?; // This clone is a crime
+        Trie::persist_batch_items(storage, &update, &items, batch_id)?;
         let next_index = root_idx + update.nodes_added.len() as u64;
 
         // Generate post-insert proofs
@@ -103,7 +103,7 @@ impl Trie {
         ))
     }
 
-    fn persist_batch(
+    fn persist_batch_items(
         storage: TrieDB,
         update: &TrieUpdate,
         items: &Vec<CachedItem>,

@@ -1,5 +1,5 @@
 use std::sync::Arc;
-
+use tracing::{info, instrument};
 use crate::db::ConnectionManager;
 use crate::models::batch::BatchStatus;
 use crate::trie_cache::item::CachedItem;
@@ -29,6 +29,7 @@ pub async fn create_batch(
     hex_values: Vec<String>,
     manager: Arc<ConnectionManager>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
+    info!("Received new Batch!");
     let items: Vec<CachedItem> = hex_values
         .into_iter()
         .map(|hex| {

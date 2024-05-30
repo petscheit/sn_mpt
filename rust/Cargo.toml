@@ -29,3 +29,5 @@ r2d2 = "0.8.10"
 r2d2_sqlite = "0.21.0"
 async-trait = "0.1.80"
 thiserror = "1.0.61"
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }

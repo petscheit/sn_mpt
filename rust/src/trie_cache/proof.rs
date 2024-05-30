@@ -26,18 +26,12 @@ fn verify_proof(
     let mut remaining_path: &BitSlice<u8, Msb0> = key;
 
     for proof_node in proofs.iter() {
-        // Hash mismatch? Return None.
         if proof_node.hash::<PedersenHash>() != expected_hash {
             return None;
         }
         match proof_node {
             TrieNode::Binary { left, right } => {
-                // Direction will always correspond to the 0th index
-                // because we're removing bits on every iteration.
                 let direction = Direction::from(remaining_path[0]);
-
-                // Set the next hash to be the left or right hash,
-                // depending on the direction
                 expected_hash = match direction {
                     Direction::Left => *left,
                     Direction::Right => *right,
@@ -46,12 +40,6 @@ fn verify_proof(
             }
             TrieNode::Edge { child, path } => {
                 if path != &remaining_path[..path.len()] {
-                    // If paths don't match, we've found a proof of non membership because
-                    // we:
-                    // 1. Correctly moved towards the target insofar as is possible, and
-                    // 2. hashing all the nodes along the path does result in the root hash,
-                    //    which means
-                    // 3. the target definitely does not exist in this tree
                     return Some(Membership::NonMember);
                 }
 
@@ -64,20 +52,9 @@ fn verify_proof(
 
     assert!(remaining_path.is_empty(), "Proof path should be empty");
 
-    // At this point, we should reach `value` !
     if expected_hash == value {
         Some(Membership::Member)
     } else {
-        // Hash mismatch. Return `None`.
         None
     }
 }
-
-
-
-//
-// struct HdpCache {
-//     persistance: Persistance,
-//
-//
-// }
