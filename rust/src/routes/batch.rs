@@ -51,7 +51,7 @@ fn create_batch_route(
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("batches")
         .and(warp::post())
-        .and(warp::body::json::<Vec<String>>())
+        .and(warp::body::json::<Vec<(String, String)>>())
         .and(with_manager(manager))
         .and_then(create_batch)
 }
@@ -136,7 +136,7 @@ mod test {
         let resp = request()
             .method("POST")
             .path("/batches")
-            .json(&vec!["invalid", "input"])
+            .json(&vec![("invalid", "input")])
             .reply(&api)
             .await;
 
@@ -148,7 +148,7 @@ mod test {
         let resp = request()
             .method("POST")
             .path("/batches")
-            .json(&vec!["010101", "010101"])
+            .json(&vec![("010101", "010101")])
             .reply(&api)
             .await;
 

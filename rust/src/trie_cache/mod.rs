@@ -117,11 +117,11 @@ mod test {
         assert_eq!(result.id, 1);
         assert_eq!(
             result.pre_root,
-            "07020e0f5c03f535f90ed3789c7f6e1aaa9694328a00a48a349d65d2f9870e72"
+            "0119f7f2a9b24e430529cb07a3306926112683f030ca3272c3cf6b9b076c5d90"
         );
         assert_eq!(
             result.post_root,
-            "01737140f9fb422940bf92518c92455d6c08df6ef8f02333eec546512dd69ec4"
+            "0509ae553ebea82ab4ee0d7f92181ccc9061dbf3cd5cb3e29b731ed0474c2d65"
         );
 
         let items_two = (0..10).map(|_| CachedItem::default()).collect();

@@ -41,6 +41,7 @@ impl ConnectionManager {
         )?;
 
         self.get_connection()?.execute(
+
             "CREATE TABLE IF NOT EXISTS leaves (
                 idx INTEGER PRIMARY KEY,
                 key BLOB NOT NULL,

@@ -4,6 +4,7 @@ use crate::trie_cache::item::CachedItem;
 use crate::trie_cache::TrieCache;
 use crate::{db, errors::TrieCacheError};
 use std::sync::Arc;
+use pathfinder_crypto::Felt;
 use tracing::info;
 
 use warp::{http::StatusCode, Reply};
@@ -39,16 +40,16 @@ pub async fn fetch_batch(
 /// This function takes a vector of hexadecimal values and converts them into `CachedItem` objects.
 /// It then creates a new batch in the database using the `TrieCache` struct and returns the resulting proofs as a JSON response.
 pub async fn create_batch(
-    hex_values: Vec<String>,
+    hex_values: Vec<(String, String)>,
     manager: Arc<ConnectionManager>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     info!("Received new Batch!");
     let items: Vec<CachedItem> = hex_values
         .into_iter()
-        .map(|hex| {
-            hex::decode(hex)
-                    .map(CachedItem::new)
-                    .map_err(|_| TrieCacheError::InvalidHexString)
+        .map(|(key, value)| {
+            let key = Felt::from_hex_str(&key).map_err(|_| TrieCacheError::InvalidHexString)?;
+            let value = hex::decode(value).map_err(|_| TrieCacheError::InvalidHexString)?;
+            Ok::<CachedItem, TrieCacheError>(CachedItem::new(key, value))
         })
         .collect::<Result<Vec<_>, _>>()?;
 

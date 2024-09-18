@@ -51,7 +51,7 @@ impl Trie {
         let storage = TrieDB::new(conn);
         // We need to insert and persist a dummy item to initialize the storage for now.
         // ToDo: figure out how to get around this
-        let item = CachedItem::new(vec![0; 32]);
+        let item = CachedItem::new(Felt::from_u64(0), vec![0; 32]);
         let _ = trie.set(&storage, item.key.view_bits().to_bitvec(), item.commitment);
         let update = trie.clone().commit(&storage).unwrap();
         let _ = Trie::persist_batch_items(storage, &update, &vec![item], &0);

@@ -8,6 +8,7 @@ use warp::{Rejection, Reply};
 
 pub async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infallible> {
     info!("Received Rejection: {:?}", err);
+    println!("Received Rejection: {:?}", err);
 
     let code;
     let message;
