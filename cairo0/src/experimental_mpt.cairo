@@ -13,7 +13,154 @@ from starkware.cairo.common.builtin_poseidon.poseidon import (
     poseidon_hash_many,
 )
 
+// func traverse_inner_loop{
+//     pedersen_ptr: HashBuiltin*,
+//     bitwise_ptr: BitwiseBuiltin*,
+//     pow2_array: felt*,
+// }(nodes: felt**, n_nodes: felt, expected_path: felt, hash_value: felt, path: felt, path_length_pow2: felt) -> (root: felt, path: felt) {
+//     alloc_locals;
+//     tempvar hash_value = hash_value;
+//     tempvar current_path = path;
+//     tempvar expected_path = expected_path;
+//     tempvar path_length_pow2 = path_length_pow2;
+//     tempvar i = n_nodes;
+
+//     loop:
+//     let i = [ap - 1];
+//     let path_length_pow2 = [ap - 2];
+//     let expected_path = [ap - 3];
+//     let current_path = [ap - 4];
+//     let hash_value = [ap - 5];
+
+//     %{ memory[ap] = 1 if ids.i == 0 else 0 %}
+//     jmp end_loop if [ap] != 0, ap++;
+
+//     %{ memory[ap] = node_types[ids.i] %}
+//     jmp edge_node if [ap] != 0, ap++;
+
+//     // // binary_node:
+//     assert bitwise_ptr[n_nodes - i].x = expected_path;
+//     assert bitwise_ptr[n_nodes - i].y = current_path;
+//     let result = bitwise_ptr[n_nodes - i].x_and_y;
+//     %{
+//         memory[ap] = nodes[ids.i][0]
+//         memory[ap+1] = values[ids.i][1]
+//     %}
+//     ap += 2;
+
+//     let x = [ap - 2];
+//     let y = [ap - 1];
+
+//     if(result == 0) {
+//         assert hash_value = node[0];
+//         new_path = path;
+//     } else {
+//         assert hash_value = node[1];
+//         new_path = path + path_length_pow2;
+//     }
+
+
+//     edge_node:
+
+
+//     [ap] = i - 1, ap++;
+//     jmp loop;
+
+//     end_loop:
+//     assert 1 = 1;
+
+//     let bitwise_ptr = bitwise_ptr + 2 * BitwiseBuiltin.SIZE;
+
+//     return ();
+   
+//     // let node = nodes[n_nodes - 1];
+//     // %{ memory[ap] = nodes_types[ids.n_nodes - 1] %}
+//     // jmp edge_node if [ap] != 0, ap++;
+
+//     // // binary_node:
+//     // let (result) = bitwise_and(expected_path, path_length_pow2);
+//     // local new_path: felt;
+//     // if(result == 0) {
+//     //     assert hash_value = node[0];
+//     //     new_path = path;
+//     // } else {
+//     //     assert hash_value = node[1];
+//     //     new_path = path + path_length_pow2;
+//     // }
+//     // let next_path_length_pow2 = path_length_pow2 * 2;
+//     // let next_hash = hash_binary_node(node);
+    
+//     // return traverse_inner(n_nodes - 1, expected_path, next_hash, new_path, next_path_length_pow2);
+
+//     // edge_node:
+//     // assert hash_value = node[0];
+//     // let next_path = node[1] * path_length_pow2;
+//     // let next_path_length_pow2 = path_length_pow2 * pow2_array[node[2]];
+//     // let next_hash = hash_edge_node(node);
+
+//     // return traverse_inner(n_nodes - 1, expected_path, next_hash, next_path, next_path_length_pow2);
+// }
+
+
 func main{
+    pedersen_ptr: HashBuiltin*,
+    range_check_ptr,
+    bitwise_ptr: BitwiseBuiltin*,
+    poseidon_ptr: PoseidonBuiltin*,
+}() {
+    alloc_locals;
+
+    let (values: felt**) = alloc();
+    local values_len: felt;
+
+    %{
+        values = [
+            [0x66df77b1feff9fd7eb05ec4f0c549081177234142de1defe81161f89629fbe4, 0x7b9c32a80de555d5be729cb33670373607568f1b0683c1dd37da33be1baa676],
+            [0x2e60901d1d01eb7eb7b63c7585202dc9fc308c5b76a041e7020fd21add06bb7, 0x2363e5bbb71359c444efa05159d99bf2208901dcd289a871ead0fa62dbceeff],
+        ]
+        node_types = [0, 0]
+
+        ids.values_len = 2
+    %}
+
+    tempvar i = 0;
+
+    loop:
+    let i = [ap - 1];
+
+    %{ memory[ap] = 1 if ids.values_len == ids.i else 0 %}
+    jmp end_loop if [ap] != 0, ap++;
+
+
+    // binary_node:
+    %{
+        memory[ap] = values[ids.i][0]
+        memory[ap+1] = values[ids.i][1]
+    %}
+
+    ap += 2;
+
+    let x = [ap - 2];
+    let y = [ap - 1];
+    assert bitwise_ptr[i].x = x;
+    assert bitwise_ptr[i].y = y;
+    let result = bitwise_ptr[i].x_and_y;
+
+
+    [ap] = i + 1, ap++;
+    jmp loop;
+
+    end_loop:
+    assert 1 = 1;
+
+    let bitwise_ptr = bitwise_ptr + 2 * BitwiseBuiltin.SIZE;
+    return ();
+
+    
+
+}
+
+func main2{
     pedersen_ptr: HashBuiltin*,
     range_check_ptr,
     bitwise_ptr: BitwiseBuiltin*,
