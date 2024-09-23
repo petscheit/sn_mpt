@@ -13,154 +13,7 @@ from starkware.cairo.common.builtin_poseidon.poseidon import (
     poseidon_hash_many,
 )
 
-// func traverse_inner_loop{
-//     pedersen_ptr: HashBuiltin*,
-//     bitwise_ptr: BitwiseBuiltin*,
-//     pow2_array: felt*,
-// }(nodes: felt**, n_nodes: felt, expected_path: felt, hash_value: felt, path: felt, path_length_pow2: felt) -> (root: felt, path: felt) {
-//     alloc_locals;
-//     tempvar hash_value = hash_value;
-//     tempvar current_path = path;
-//     tempvar expected_path = expected_path;
-//     tempvar path_length_pow2 = path_length_pow2;
-//     tempvar i = n_nodes;
-
-//     loop:
-//     let i = [ap - 1];
-//     let path_length_pow2 = [ap - 2];
-//     let expected_path = [ap - 3];
-//     let current_path = [ap - 4];
-//     let hash_value = [ap - 5];
-
-//     %{ memory[ap] = 1 if ids.i == 0 else 0 %}
-//     jmp end_loop if [ap] != 0, ap++;
-
-//     %{ memory[ap] = node_types[ids.i] %}
-//     jmp edge_node if [ap] != 0, ap++;
-
-//     // // binary_node:
-//     assert bitwise_ptr[n_nodes - i].x = expected_path;
-//     assert bitwise_ptr[n_nodes - i].y = current_path;
-//     let result = bitwise_ptr[n_nodes - i].x_and_y;
-//     %{
-//         memory[ap] = nodes[ids.i][0]
-//         memory[ap+1] = values[ids.i][1]
-//     %}
-//     ap += 2;
-
-//     let x = [ap - 2];
-//     let y = [ap - 1];
-
-//     if(result == 0) {
-//         assert hash_value = node[0];
-//         new_path = path;
-//     } else {
-//         assert hash_value = node[1];
-//         new_path = path + path_length_pow2;
-//     }
-
-
-//     edge_node:
-
-
-//     [ap] = i - 1, ap++;
-//     jmp loop;
-
-//     end_loop:
-//     assert 1 = 1;
-
-//     let bitwise_ptr = bitwise_ptr + 2 * BitwiseBuiltin.SIZE;
-
-//     return ();
-   
-//     // let node = nodes[n_nodes - 1];
-//     // %{ memory[ap] = nodes_types[ids.n_nodes - 1] %}
-//     // jmp edge_node if [ap] != 0, ap++;
-
-//     // // binary_node:
-//     // let (result) = bitwise_and(expected_path, path_length_pow2);
-//     // local new_path: felt;
-//     // if(result == 0) {
-//     //     assert hash_value = node[0];
-//     //     new_path = path;
-//     // } else {
-//     //     assert hash_value = node[1];
-//     //     new_path = path + path_length_pow2;
-//     // }
-//     // let next_path_length_pow2 = path_length_pow2 * 2;
-//     // let next_hash = hash_binary_node(node);
-    
-//     // return traverse_inner(n_nodes - 1, expected_path, next_hash, new_path, next_path_length_pow2);
-
-//     // edge_node:
-//     // assert hash_value = node[0];
-//     // let next_path = node[1] * path_length_pow2;
-//     // let next_path_length_pow2 = path_length_pow2 * pow2_array[node[2]];
-//     // let next_hash = hash_edge_node(node);
-
-//     // return traverse_inner(n_nodes - 1, expected_path, next_hash, next_path, next_path_length_pow2);
-// }
-
-
 func main{
-    pedersen_ptr: HashBuiltin*,
-    range_check_ptr,
-    bitwise_ptr: BitwiseBuiltin*,
-    poseidon_ptr: PoseidonBuiltin*,
-}() {
-    alloc_locals;
-
-    let (values: felt**) = alloc();
-    local values_len: felt;
-
-    %{
-        values = [
-            [0x66df77b1feff9fd7eb05ec4f0c549081177234142de1defe81161f89629fbe4, 0x7b9c32a80de555d5be729cb33670373607568f1b0683c1dd37da33be1baa676],
-            [0x2e60901d1d01eb7eb7b63c7585202dc9fc308c5b76a041e7020fd21add06bb7, 0x2363e5bbb71359c444efa05159d99bf2208901dcd289a871ead0fa62dbceeff],
-        ]
-        node_types = [0, 0]
-
-        ids.values_len = 2
-    %}
-
-    tempvar i = 0;
-
-    loop:
-    let i = [ap - 1];
-
-    %{ memory[ap] = 1 if ids.values_len == ids.i else 0 %}
-    jmp end_loop if [ap] != 0, ap++;
-
-
-    // binary_node:
-    %{
-        memory[ap] = values[ids.i][0]
-        memory[ap+1] = values[ids.i][1]
-    %}
-
-    ap += 2;
-
-    let x = [ap - 2];
-    let y = [ap - 1];
-    assert bitwise_ptr[i].x = x;
-    assert bitwise_ptr[i].y = y;
-    let result = bitwise_ptr[i].x_and_y;
-
-
-    [ap] = i + 1, ap++;
-    jmp loop;
-
-    end_loop:
-    assert 1 = 1;
-
-    let bitwise_ptr = bitwise_ptr + 2 * BitwiseBuiltin.SIZE;
-    return ();
-
-    
-
-}
-
-func main2{
     pedersen_ptr: HashBuiltin*,
     range_check_ptr,
     bitwise_ptr: BitwiseBuiltin*,
@@ -170,11 +23,25 @@ func main2{
     alloc_locals;
     let pow2_array: felt* = pow2alloc252();
 
+    let storage_addresses: felt* = alloc();
+    local storage_count: felt;
+    local contract_address: felt;
+    %{ 
+        segments.write_arg(ids.storage_addresses, [int(key, 16) for key in program_input["storage_addresses"]])
+        ids.storage_count = len(program_input["storage_addresses"])
+        ids.contract_address = int(program_input["contract_address"], 16)
+    %}
+
     with pow2_array {
-        let value = verify_proof(0x34e41ac48df28204189050de68200d53a035219260dec46824d009b225866d2, 0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d, 0x3b92238d3ae057fa455c2e182a43661b99f45f4499473d977ec1009a9e805ed);
+        let (values) = verify_proof(0x34e41ac48df28204189050de68200d53a035219260dec46824d009b225866d2, contract_address, storage_addresses, storage_count);
     }
 
-    %{ print("value:", ids.value) %}
+    %{
+        i = 0
+        while i < ids.storage_count:
+            print("storage_addresses[", i, "]:", memory[ids.values + i])
+            i += 1
+    %}
 
     return ();
 }
@@ -184,21 +51,23 @@ func verify_proof{
     bitwise_ptr: BitwiseBuiltin*,
     poseidon_ptr: PoseidonBuiltin*,
     pow2_array: felt*,
-}(state_commitment: felt, contract_address: felt, storage_address: felt) -> felt {
+}(state_commitment: felt, contract_address: felt, storage_addresses: felt*, storage_count: felt) -> (values: felt*) {
     alloc_locals;
-   
-    // Compute contract_root
-    %{ vm_enter_scope(dict(nodes=program_input["contract_data"]["storage_proof"])) %}
-    let (contract_state_nodes, contract_state_nodes_len) = load_nodes();
-    let (contract_root, value) = traverse(contract_state_nodes, contract_state_nodes_len, storage_address);
-    %{ vm_exit_scope() %}
+
+    let (values: felt*) = alloc();
+    // Compute contract_root and storage_values
+    with storage_addresses, values {
+        let (contract_root) = validate_storage_proofs(0, storage_count, 0);
+    }
+
+    %{ print("contract_root: ", ids.contract_root) %}
 
     // Compute contract_state_hash
     local class_hash: felt;
     local nonce: felt;
     local contract_state_hash_version: felt;
     %{ 
-        ids.class_hash = int(program_input["contract_data"]["class_hash"], 16) 
+        ids.class_hash = int(program_input["proof"]["contract_data"]["class_hash"], 16) 
         ids.nonce = int(program_input["contract_data"]["nonce"], 16)
         ids.contract_state_hash_version = int(program_input["contract_data"]["contract_state_hash_version"], 16)
     %}
@@ -208,7 +77,7 @@ func verify_proof{
     let (contract_state_hash) = hash2{hash_ptr=pedersen_ptr}(hash_value, contract_state_hash_version);
     
     // Compute contract_state_hash
-    %{ vm_enter_scope(dict(nodes=program_input["contract_proof"])) %}
+    %{ vm_enter_scope(dict(nodes=program_input["proof"]["contract_proof"])) %}
     let (contract_nodes, contract_nodes_len) = load_nodes();
     let (contract_tree_root, expected_contract_state_hash) = traverse(contract_nodes, contract_nodes_len, contract_address);
     %{ vm_exit_scope() %}
@@ -227,7 +96,38 @@ func verify_proof{
     let (state_root) = poseidon_hash_many(3, hash_chain);
     assert state_root = state_commitment;
 
-    return value;
+    return (values=values);
+}
+
+func validate_storage_proofs{
+    pedersen_ptr: HashBuiltin*,
+    bitwise_ptr: BitwiseBuiltin*,
+    pow2_array: felt*,
+    storage_addresses: felt*,
+    values: felt*,
+}(contract_root: felt, storage_count: felt, index: felt) -> (root: felt) {
+    
+    %{ print("index: ", ids.index) %}
+    if(index == storage_count) {
+        return (root=contract_root);
+    }
+
+    // Compute contract_root
+    %{ vm_enter_scope(dict(nodes=program_input["proof"]["contract_data"]["storage_proof"][ids.index])) %}
+    %{ print(nodes) %}
+    let (contract_state_nodes, contract_state_nodes_len) = load_nodes();
+    let (new_contract_root, value) = traverse(contract_state_nodes, contract_state_nodes_len, storage_addresses[index]);
+    %{ vm_exit_scope() %}
+    
+    // Assert that the contract root is consistent between storage slots
+    if(index != 0) {
+        with_attr error_message("Contract Root Mismatch!") {
+            assert contract_root = new_contract_root;
+         }
+    }
+    assert values[index] = value;
+
+    return validate_storage_proofs(new_contract_root, storage_count, index + 1);
 }
 
 func traverse{
