@@ -60,16 +60,14 @@ func verify_proof{
         let (contract_root) = validate_storage_proofs(0, storage_count, 0);
     }
 
-    %{ print("contract_root: ", ids.contract_root) %}
-
     // Compute contract_state_hash
     local class_hash: felt;
     local nonce: felt;
     local contract_state_hash_version: felt;
     %{ 
         ids.class_hash = int(program_input["proof"]["contract_data"]["class_hash"], 16) 
-        ids.nonce = int(program_input["contract_data"]["nonce"], 16)
-        ids.contract_state_hash_version = int(program_input["contract_data"]["contract_state_hash_version"], 16)
+        ids.nonce = int(program_input["proof"]["contract_data"]["nonce"], 16)
+        ids.contract_state_hash_version = int(program_input["proof"]["contract_data"]["contract_state_hash_version"], 16)
     %}
 
     let (hash_value) = hash2{hash_ptr=pedersen_ptr}(class_hash, contract_root);
@@ -86,7 +84,7 @@ func verify_proof{
     assert contract_state_hash = expected_contract_state_hash;
 
     local class_commitment: felt;
-    %{ ids.class_commitment = int(program_input["class_commitment"], 16) %}
+    %{ ids.class_commitment = int(program_input["proof"]["class_commitment"], 16) %}
 
     let (hash_chain: felt*) = alloc();
     assert hash_chain[0] = 28355430774503553497671514844211693180464; //STARKNET_STATE_V0
@@ -107,14 +105,12 @@ func validate_storage_proofs{
     values: felt*,
 }(contract_root: felt, storage_count: felt, index: felt) -> (root: felt) {
     
-    %{ print("index: ", ids.index) %}
     if(index == storage_count) {
         return (root=contract_root);
     }
 
     // Compute contract_root
     %{ vm_enter_scope(dict(nodes=program_input["proof"]["contract_data"]["storage_proof"][ids.index])) %}
-    %{ print(nodes) %}
     let (contract_state_nodes, contract_state_nodes_len) = load_nodes();
     let (new_contract_root, value) = traverse(contract_state_nodes, contract_state_nodes_len, storage_addresses[index]);
     %{ vm_exit_scope() %}
