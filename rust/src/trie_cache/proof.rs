@@ -44,7 +44,6 @@ fn verify_proof(
                 }
 
                 expected_hash = *child;
-
                 remaining_path = &remaining_path[path.len()..];
             }
         }
